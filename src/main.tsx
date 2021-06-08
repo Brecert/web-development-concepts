@@ -1,4 +1,4 @@
-import * as fumi from './threads'
+import { observe, update, subscribe } from './observer'
 import { h } from './dom'
 
 // hi!
@@ -6,18 +6,17 @@ import { h } from './dom'
 // As far as I know there's nothing particularly exciting about them, I just wanted to have some fun making them
 
 
-const count = fumi.channel(0)
-const addCount = () => count.set(count.get() + 1)
-const subCount = () => count.set(count.get() - 1)
+const count = observe(0)
+const addCount = () => update(count, count.value() + 1)
+const subCount = () => update(count, count.value() - 1)
 
-fumi.subscribe(count.thread, val => console.log(`Updating count to: ${val}`));
-
+subscribe(count, val => console.log(`Updating count to: ${val}`));
 
 const App = (
   <div title={"Hello world"}>
     Hello world!
     <button onclick={addCount}>+</button>
-    <span>{count.thread}</span>
+    <span>{count}</span>
     <button onclick={subCount}>-</button>
     Hello world
   </div>
@@ -28,3 +27,5 @@ console.log(App)
 document.body.append(
   App
 )
+
+update(count)

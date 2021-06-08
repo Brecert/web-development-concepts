@@ -1,21 +1,8 @@
-import { Fn, subscribe, Thread, isThread } from "./threads";
+import { Observer, subscribe } from "./observer";
+import type { WritableKeys } from "./types";
 
-type IfEquals<X, Y, A = X, B = never> = (<T>() => T extends X ? 1 : 2) extends <
-  T
->() => T extends Y ? 1 : 2
-  ? A
-  : B;
-
-type WritableKeys<T> = {
-  [P in keyof T]-?: IfEquals<
-    { [Q in P]: T[P] },
-    { -readonly [Q in P]: T[P] },
-    P
-  >;
-}[keyof T];
-
-type HTMLElementAttribute = {
-  [K in WritableKeys<HTMLElement>]?: HTMLElement[K] | Thread<HTMLElement[K]>;
+export type HTMLElementAttribute = {
+  [K in WritableKeys<HTMLElement>]?: HTMLElement[K] | Observer<HTMLElement[K]>;
 };
 
 // This is a mess and is only really meant to test threads.ts
@@ -75,10 +62,8 @@ for each template item in templateData
 const h = <T extends keyof HTMLElementTagNameMap>(
   tagName: T,
   attrs: HTMLElementAttribute,
-  ...children: (unknown | Thread<unknown>)[]
+  ...children: (unknown | Observer<unknown>)[]
 ) => {
-  console.log([tagName, attrs, children]);
-
   const el = document.createElement(tagName);
 
   if (attrs) {
@@ -88,7 +73,7 @@ const h = <T extends keyof HTMLElementTagNameMap>(
         el.setAttribute(name, value);
       } else {
         // fix this
-        subscribe(value as Thread<typeof value>, (val) => {
+        subscribe(value as Observer<typeof value>, (val) => {
           Reflect.set(el, name, val);
         });
       }
@@ -123,18 +108,9 @@ declare namespace h {
   export namespace JSX {
     type Element = HTMLElement | SVGElement | DocumentFragment;
 
-    interface ElementAttributesProperty {
-      props: unknown;
-    }
-
-    interface ElementChildrenAttribute {
-      // children: unknown;
-    }
-
-    // Prevent children on components that don't declare them
-    type IntrinsicAttributes = HTMLElementAttribute & {
-      // children?: never;
-    };
+    type ElementAttributesProperty = {};
+    type ElementChildrenAttribute = {};
+    type IntrinsicAttributes = {};
 
     type IntrinsicElements = {
       [K in keyof HTMLElementTagNameMap]: HTMLElementAttribute;
