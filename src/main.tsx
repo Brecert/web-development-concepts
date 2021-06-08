@@ -1,5 +1,6 @@
 import { observe, update, subscribe } from './observer'
 import { h } from './dom'
+import { callRoute, Route } from './routes'
 
 // hi!
 // These are just some ideas and tests that I've wanted to make
@@ -12,20 +13,54 @@ const subCount = () => update(count, count.value() - 1)
 
 subscribe(count, val => console.log(`Updating count to: ${val}`));
 
-const App = (
-  <div title={"Hello world"}>
+const DefaultView = () => {
+  return (
+    <div>
+      <a href="#test" >Goto #test</a>
     Hello world!
-    <button onclick={addCount}>+</button>
-    <span>{count}</span>
-    <button onclick={subCount}>-</button>
+      <button onclick={addCount}>+</button>
+      <span>{count}</span>
+      <button onclick={subCount}>-</button>
     Hello world
-  </div>
-)
+    </div>
+  )
+}
 
-console.log(App)
+const TestingView = () => {
+  return (
+    <h1>
+      Test!
+    </h1>
+  )
+}
+
+// const currentView = observe(<DefaultView />)
+
+// console.log(currentView)
+
+// const routes: Route[] = [
+//   [
+//     /#test/,
+//     () => {
+//       update(currentView, <TestingView />)
+//     },
+//   ],
+//   [
+//     /#?/,
+//     () => {
+//       update(currentView, <DefaultView />)
+//     }
+//   ]
+// ]
+
+// window.addEventListener('hashchange', _ => {
+//   callRoute(location.hash, routes)
+// })
+
+const App = (
+  <DefaultView />
+)
 
 document.body.append(
   App
 )
-
-update(count)

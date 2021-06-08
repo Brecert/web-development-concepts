@@ -1,9 +1,5 @@
 import { Observer, subscribe } from "./observer";
-import type { WritableKeys } from "./types";
-
-export type HTMLElementAttribute = {
-  [K in WritableKeys<HTMLElement>]?: HTMLElement[K] | Observer<HTMLElement[K]>;
-};
+import type { PickWritable, WritableKeys } from "./types";
 
 // This is a mess and is only really meant to test threads.ts
 // I would like to test some ideas with it though like compiling templates at some point
@@ -59,26 +55,48 @@ for each template item in templateData
     subscribe.call(null, hook)
 */
 
-const h = <T extends keyof HTMLElementTagNameMap>(
-  tagName: T,
-  attrs: HTMLElementAttribute,
-  ...children: (unknown | Observer<unknown>)[]
-) => {
-  const el = document.createElement(tagName);
-
-  if (attrs) {
-    for (const name in attrs) {
-      let value = attrs[name as keyof typeof attrs];
-      if (el.hasAttribute(name) && typeof value === "string") {
-        el.setAttribute(name, value);
-      } else {
-        // fix this
-        subscribe(value as Observer<typeof value>, (val) => {
-          Reflect.set(el, name, val);
-        });
-      }
+function applyAttributes<T>(
+  el: Element,
+  attrs: Record<string, Observer<T> | T>
+) {
+  for (const name in attrs) {
+    // For some reason this only works when wrapped with `()`
+    let value = attrs[name as keyof typeof attrs];
+    if (el.hasAttribute(name) && typeof value === "string") {
+      el.setAttribute(name, value);
+    } else {
+      // fix this
+      subscribe(value, (val) => {
+        Reflect.set(el, name, val);
+      });
     }
   }
+}
+
+type Component = <T>(props: T) => Element;
+
+interface ComponentAttributes {
+  attrs?: Record<string, unknown>;
+  children?: (unknown | Observer<unknown>)[]
+}
+
+export function createComponent<T>(
+  component: Component,
+  { attrs, children, ...props }: ComponentAttributes & T,
+): Element {
+  const el = component(props);
+  attrs && applyAttributes(el, attrs);
+  return el;
+}
+
+export function createElement<TagName extends keyof HTMLElementTagNameMap>(
+  tagName: TagName,
+  attrs: h.JSX.IntrinsicElements[TagName],
+  ...children: (Observer<unknown> | Element)[]
+): Element {
+  const el = document.createElement(tagName);
+
+  applyAttributes(el, attrs);
 
   children.map((child, i) => {
     let node: Node;
@@ -99,9 +117,23 @@ const h = <T extends keyof HTMLElementTagNameMap>(
   });
 
   return el;
-};
+}
+
+function h<TagName extends keyof HTMLElementTagNameMap>(
+  component: Component | TagName,
+  attrs: h.JSX.IntrinsicElements[TagName],
+  ...children: (Observer<unknown> | Element)[]
+): Element {
+  if (typeof component === "string") {
+    return createElement(component, attrs, ...children);
+  } else {
+    return createComponent(component, { attrs, children });
+  }
+}
 
 export { h };
+
+export type MapObservable<T> = { [K in keyof T]: T[K] | Observer<K> };
 
 // I wanted to see how simple I could make much of the JSX declarations here
 declare namespace h {
@@ -113,7 +145,9 @@ declare namespace h {
     type IntrinsicAttributes = {};
 
     type IntrinsicElements = {
-      [K in keyof HTMLElementTagNameMap]: HTMLElementAttribute;
+      // [K in keyof HTMLElementTagNameMap]: Partial<PickWritable<HTMLElementTagNameMap[K]>>;
+      [K in keyof HTMLElementTagNameMap]: Partial<HTMLElementTagNameMap[K]>;
+      // [K in keyof HTMLElementTagNameMap]: any;
     };
   }
 }

@@ -34,6 +34,8 @@ export const isObserver = (val: unknown): val is Observer<unknown> =>
 
 export const subscribe = async <T>(o: Observer<T> | T, fn: Fn<T>) => {
   if(!isObserver(o)) return fn(o)
+
+  fn(o.value())
   
   for await (const val of o) {
     fn(val)
